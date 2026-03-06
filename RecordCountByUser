@@ -1,0 +1,45 @@
+// ===== CONFIGURATION =====
+List<String> objectsToCheck = new List<String>{
+    'Account', 'Contact', 'Opportunity', 'Lead'
+};
+
+Date startDate = Date.today().toStartOfMonth().addMonths(-1);
+Date endDate   = Date.today().toStartOfMonth();
+
+String monthLabel = DateTime.newInstance(startDate, Time.newInstance(0,0,0,0))
+                            .format('MMMM yyyy');
+
+// ===== BUILD CSV =====
+String csv = 'Object,Created By,Total Records,Month\n';
+
+for (String objName : objectsToCheck) {
+    String query =
+        'SELECT CreatedBy.Name name, COUNT(Id) total ' +
+        'FROM ' + objName +
+        ' WHERE CreatedDate >= :startDate ' +
+        '   AND CreatedDate < :endDate ' +
+        ' GROUP BY CreatedBy.Name ' +
+        ' ORDER BY COUNT(Id) DESC';
+
+    List<AggregateResult> results = Database.query(query);
+
+    if (results.isEmpty()) {
+        csv += objName + ',No records created,0,' + monthLabel + '\n';
+    } else {
+        for (AggregateResult ar : results) {
+            String userName = (String)  ar.get('name');
+            Integer total   = (Integer) ar.get('total');
+            csv += objName + ',"' + userName + '",' + total + ',' + monthLabel + '\n';
+        }
+    }
+}
+
+// ===== SAVE TO SALESFORCE FILES =====
+ContentVersion cv = new ContentVersion();
+cv.Title           = 'Record_Creation_Report_' + monthLabel.replace(' ', '_');
+cv.PathOnClient    = 'Record_Creation_Report_' + monthLabel.replace(' ', '_') + '.csv';
+cv.VersionData     = Blob.valueOf(csv);
+cv.IsMajorVersion  = true;
+insert cv;
+
+System.debug('✅ File saved! ContentVersion Id: ' + cv.Id);
