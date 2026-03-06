@@ -20,4 +20,4 @@ This project provides code to retrieve the count of records created by each user
 
 ---
 
-_See below for setup instructions and code details._
+_See class RecordCountByUser for setup instructions and code details._
